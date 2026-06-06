@@ -24,8 +24,6 @@ import json
 import struct
 from pathlib import Path
 
-import pytest
-
 FIXTURE = json.loads(
     (Path(__file__).parent / "fixtures" / "login_select1_plaintext.json").read_text()
 )
@@ -80,7 +78,10 @@ def build_login7(
     block of UTF-16LE strings. Offsets are bytes from the start of the LOGIN7
     message; lengths are character counts. The password bytes are obfuscated.
     """
-    enc = lambda s: s.encode("utf-16-le")
+
+    def enc(s):
+        return s.encode("utf-16-le")
+
     data = bytearray()
     pos = 94  # data block begins right after the 36-byte header + 58-byte table
     pairs = {}

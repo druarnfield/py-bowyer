@@ -12,14 +12,14 @@ Companion docs: `tds-cheatsheet.md` (protocol reference), [MS-TDS] spec.
 ## Phase 0 — Ground truth & scaffolding
 *Do this before any protocol code.*
 
-- [ ] Run SQL Server in Docker (`mcr.microsoft.com/mssql/server:2022-latest`, `MSSQL_SA_PASSWORD`, port 1433, Developer edition)
-- [ ] Confirm **encryption is optional, not forced** (so PRELOGIN can negotiate it off / plaintext is visible)
-- [ ] Connect with `sqlcmd` (go-sqlcmd) and run `SELECT 1` successfully
-- [ ] Install Wireshark; enable loopback capture (`lo` / `lo0` / Npcap loopback on Windows)
-- [ ] Capture a real `sqlcmd` login + `SELECT 1`; enable "Reassemble fragmented TDS messages"; filter `tds`
-- [ ] Save that capture — it's the byte-for-byte oracle for the whole project
-- [ ] Lay down repo skeleton: src layout, `pyproject.toml` (PEP 621), pytest, ruff
-- [ ] `pip install -e .` / `uv sync` works; empty package imports
+- [x] Run SQL Server in Docker (`mcr.microsoft.com/mssql/server:2022-latest`, `MSSQL_SA_PASSWORD`, port 1433, Developer edition)
+- [x] Confirm **encryption is optional, not forced** (so PRELOGIN can negotiate it off / plaintext is visible)
+- [x] Connect with `sqlcmd` (go-sqlcmd) and run `SELECT 1` successfully
+- [x] Install Wireshark; enable loopback capture (`lo` / `lo0` / Npcap loopback on Windows)
+- [x] Capture a real `sqlcmd` login + `SELECT 1`; enable "Reassemble fragmented TDS messages"; filter `tds`
+- [x] Save that capture — it's the byte-for-byte oracle for the whole project
+- [x] Lay down repo skeleton: src layout, `pyproject.toml` (PEP 621), pytest, ruff
+- [x] `pip install -e .` / `uv sync` works; empty package imports
 
 **Done when:** a labelled capture of a real login + `SELECT 1` exists, and the empty package imports.
 
