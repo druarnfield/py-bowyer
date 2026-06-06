@@ -1,0 +1,110 @@
+{
+  "description": "Golden plaintext TDS 7.4 round-trip for the bowyer driver: PRELOGIN -> LOGIN7 -> SQLBatch 'SELECT 1' -> result.",
+  "provenance": {
+    "server": "Microsoft SQL Server 2022 (Docker, mcr.microsoft.com/mssql/server:2022-latest)",
+    "client": "go-mssqldb via go-sqlcmd, started with -N disable (ENCRYPT_NOT_SUP)",
+    "capture": "tcpdump inside the container network; exported from Wireshark as JSON",
+    "encryption": "NONE - NOT_SUP negotiated both ways; safe to inspect, dev-only mode",
+    "note": "Offsets in LOGIN7 are byte offsets from the start of the LOGIN7 message; string lengths are CHARACTER counts (x2 for UTF-16LE bytes)."
+  },
+  "login7_rebuild": {
+    "expected_frame": 8,
+    "inputs": {
+      "tds_version": 1946157060,
+      "packet_size": 4096,
+      "client_prog_ver": 17367048,
+      "client_pid": 88229,
+      "connection_id": 0,
+      "option_flags1": 160,
+      "option_flags2": 2,
+      "type_flags": 0,
+      "option_flags3": 0,
+      "client_timezone": 0,
+      "client_lcid": 0,
+      "client_id_mac": "82841b7b04e2",
+      "host": "Drus-MacBook-Air.local",
+      "user": "sa",
+      "password": "Bowyer_Dev2026!",
+      "app": "sqlcmd",
+      "server": "127.0.0.1",
+      "library": "go-mssqldb"
+    }
+  },
+  "packets": [
+    {
+      "frame": 4,
+      "direction": "client->server",
+      "tds_type": "0x12",
+      "name": "PRELOGIN",
+      "note": "Client PRELOGIN advertising ENCRYPT_NOT_SUP (0x02).",
+      "expect": {
+        "prelogin_encryption": 2
+      },
+      "hex": "120100580000010000001f000601002500010200260001030027000404002b000105002c0024ff08000901000002000000000000d4b479a10a24434797bb8526d7125fca9352d33ebc7d49fc89becee37c6eb85000000000"
+    },
+    {
+      "frame": 6,
+      "direction": "server->client",
+      "tds_type": "0x04",
+      "name": "PRELOGIN response",
+      "note": "Server agrees ENCRYPT_NOT_SUP (0x02): no TLS, whole session plaintext.",
+      "expect": {
+        "prelogin_encryption": 2
+      },
+      "hex": "040100300000010000001f000601002500010200260001030027000004002700010500280000ff100010a40000020000"
+    },
+    {
+      "frame": 8,
+      "direction": "client->server",
+      "tds_type": "0x10",
+      "name": "LOGIN7",
+      "note": "Cleartext LOGIN7. Password is obfuscated (swap-nibbles then XOR 0xA5), not encrypted.",
+      "expect": {
+        "tds_version": "0x74000004",
+        "username": "sa",
+        "password": "Bowyer_Dev2026!",
+        "app": "sqlcmd",
+        "library": "go-mssqldb",
+        "server": "127.0.0.1"
+      },
+      "hex": "100100e600000100de000000040000740010000008000901a558010000000000a002000000000000000000005e0016008a0002008e000f00ac000600b800090000000000ca000a00de000000de00000082841b7b04e2de000000de000000de0000000000000044007200750073002d004d006100630042006f006f006b002d004100690072002e006c006f00630061006c007300610081a553a5d2a532a5f3a582a550a5e1a5f3a5c2a586a5a6a586a5c6a5b7a5730071006c0063006d0064003100320037002e0030002e0030002e00310067006f002d006d007300730071006c0064006200"
+    },
+    {
+      "frame": 9,
+      "direction": "server->client",
+      "tds_type": "0x04",
+      "name": "Login response",
+      "note": "ENVCHANGE(s) + INFO + LOGINACK(0xAD) + DONE. Server names itself 'sql2022'.",
+      "expect": {
+        "has_loginack": true,
+        "servername": "sql2022"
+      },
+      "hex": "0401017d00410100e31b0001066d0061007300740065007200066d0061007300740065007200ab660045160000020025004300680061006e00670065006400200064006100740061006200610073006500200063006f006e007400650078007400200074006f00200027006d006100730074006500720027002e0007730071006c0032003000320032000001000000e3080007050904d0003400e31700020a750073005f0065006e0067006c0069007300680000ab6a0047160000010027004300680061006e0067006500640020006c0061006e00670075006100670065002000730065007400740069006e006700200074006f002000750073005f0065006e0067006c006900730068002e0007730071006c0032003000320032000001000000ad36000174000004164d006900630072006f0073006f00660074002000530051004c00200053006500720076006500720000000000100010a4e3130004043400300039003600043400300039003600fd000000000000000000000000"
+    },
+    {
+      "frame": 11,
+      "direction": "client->server",
+      "tds_type": "0x01",
+      "name": "SQLBatch",
+      "note": "22-byte ALL_HEADERS prefix then UTF-16LE query text.",
+      "expect": {
+        "all_headers_total": 22,
+        "query": "SELECT 1;"
+      },
+      "hex": "010900300000010016000000120000000200000000000000000001000000530045004c00450043005400200031003b00"
+    },
+    {
+      "frame": 12,
+      "direction": "server->client",
+      "tds_type": "0x04",
+      "name": "Result",
+      "note": "ENVCHANGE(reset-ack) + COLMETADATA(1 col, INT4 0x38) + ROW(=1) + DONE(rowcount=1).",
+      "expect": {
+        "column_type": "0x38",
+        "row_value": 1,
+        "done_rowcount": 1
+      },
+      "hex": "0401002b00410100e303001200008101000000000020003800d101000000fd1000c1000100000000000000"
+    }
+  ]
+}

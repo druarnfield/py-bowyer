@@ -37,3 +37,8 @@ testpaths = ["tests"]
 markers = [
     "live: integration tests that require a running SQL Server (deselect with '-m \"not live\"')",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
