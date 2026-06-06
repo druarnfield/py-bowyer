@@ -5,7 +5,7 @@ py-bowyer/                        # repo root
 ├── docs/
 │   └── tds_cheatsheet.md     # the reference you're working from
 ├── src/
-│   └── tinytds/
+│   └── bowyer/
 │       ├── __init__.py           # PUBLIC API only: connect(), Connection, version, exceptions
 │       ├── constants.py          # IntEnums: PacketType, TokenType, DataType, Status flags
 │       ├── exceptions.py         # error hierarchy (PEP 249 style: DatabaseError, OperationalError, …)

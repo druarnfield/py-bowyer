@@ -1,0 +1,37 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+# (uv.lock IS committed for applications; this is a library, so leave it tracked
+#  if generated — nothing to ignore here beyond the cache)
+
+# Test / coverage / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Wireshark captures (the byte oracle) — keep small saved fixtures in
+# tests/fixtures/ under version control; ignore raw/large local captures.
+*.pcap
+*.pcapng

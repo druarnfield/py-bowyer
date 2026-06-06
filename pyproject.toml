@@ -1,0 +1,39 @@
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "py-bowyer"
+version = "0.1.0.dev0"
+description = "Pure-Python reference prototype of an Arrow-native TDS client for Microsoft SQL Server"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "TBD" }
+authors = [{ name = "Dru Arnfield" }]
+keywords = ["tds", "sql-server", "mssql", "database", "arrow"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.uv.build-backend]
+module-name = "bowyer"
+module-root = "src"
+
+[tool.ruff]
+src = ["src", "tests"]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: integration tests that require a running SQL Server (deselect with '-m \"not live\"')",
+]
