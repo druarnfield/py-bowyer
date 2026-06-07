@@ -7,6 +7,8 @@ all byte/struct handling to `_buffer` (this file never imports `struct`).
 """
 
 import socket
+from types import TracebackType
+from typing import Protocol
 
 from bowyer._buffer import PacketHeader
 from bowyer.constants import DEFAULT_PACKET_SIZE, HEADER_SIZE, PacketType, Status
@@ -16,12 +18,25 @@ class TransportError(Exception):
     """A framing/socket-level failure. Placeholder until exceptions.py lands."""
 
 
+class _Socket(Protocol):
+    """The slice of the socket API the transport uses (also met by FakeSocket)."""
+
+    def recv(self, bufsize: int, /) -> bytes: ...
+    def sendall(self, data: bytes, /) -> None: ...
+    def close(self) -> None: ...
+
+
 class Transport:
     """Sends and receives whole TDS messages over a socket."""
 
-    def __init__(self, sock) -> None:
+    def __init__(
+        self, sock: _Socket, *, packet_size: int = DEFAULT_PACKET_SIZE
+    ) -> None:
+        # `packet_size` seeds the initial size; runtime renegotiation goes through
+        # the validated setter. The constructor stays unvalidated so tests can drive
+        # chunking with a small size below the spec floor.
         self._sock = sock
-        self._packet_size = DEFAULT_PACKET_SIZE
+        self._packet_size = packet_size
 
     @property
     def packet_size(self) -> int:
@@ -43,19 +58,20 @@ class Transport:
     def close(self) -> None:
         self._sock.close()
 
-    def send_message(
+    def __enter__(self) -> "Transport":
+        return self
+
+    def __exit__(
         self,
-        packet_type: PacketType,
-        payload: bytes,
-        *,
-        packet_size: int | None = None,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
-        """
-        Split `payload` across packets, setting EOM only on the last one.
-        `packet_size` overrides the connection's negotiated size (tests only).
-        """
-        effective = packet_size if packet_size is not None else self._packet_size
-        max_payload = effective - HEADER_SIZE
+        self.close()
+
+    def send_message(self, packet_type: PacketType, payload: bytes) -> None:
+        """Split `payload` across packets, setting EOM only on the last one."""
+        max_payload = self._packet_size - HEADER_SIZE
         # Chunk into max_payload-sized pieces; an empty payload still sends one
         # (EOM) packet so the peer sees a complete message.
         chunks = [

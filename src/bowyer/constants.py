@@ -27,7 +27,7 @@ class PacketType(IntEnum):
 class Status(IntFlag):
     """The Status byte (offset 1) of the packet header (MS-TDS §2.2.3.1.2)."""
 
-    NORMAL = 0x00
+    NORMAL = 0x00  # zero-valued label for "no flags"; not membership-testable
     EOM = 0x01  # last packet of a message; drives reassembly
     IGNORE = 0x02
     RESET_CONNECTION = 0x08

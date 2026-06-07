@@ -28,11 +28,11 @@ Companion docs: `tds-cheatsheet.md` (protocol reference), [MS-TDS] spec.
 ## Phase 1 — Byte layer & framing
 *Files: `_buffer.py`, `transport.py`, `constants.py`*
 
-- [ ] `ByteReader` / `ByteWriter` with endianness-correct primitives (header = big-endian, payload = little-endian — bake the split in here)
-- [ ] Unit-test the buffer against header bytes from the capture (offline, no socket)
-- [ ] `transport.py`: socket connect, write a packet (8-byte header + payload)
-- [ ] Read a packet; reassemble multi-packet messages by the EOM status bit
-- [ ] `constants.py`: enums added as needed (PacketType, Status flags so far)
+- [x] `ByteReader` / `ByteWriter` with endianness-correct primitives (header = big-endian, payload = little-endian — bake the split in here)
+- [x] Unit-test the buffer against header bytes from the capture (offline, no socket)
+- [x] `transport.py`: socket connect, write a packet (8-byte header + payload)
+- [x] Read a packet; reassemble multi-packet messages by the EOM status bit
+- [x] `constants.py`: enums added as needed (PacketType, Status flags so far)
 
 **Done when:** you can send an arbitrary payload in a valid packet and read back a fully reassembled server message (even if unparsed). Header pack/unpack matches the capture.
 

@@ -70,6 +70,42 @@ def test_receive_closed_socket_raises(fake_socket):
         Transport(sock).receive_message()
 
 
+def test_captured_replies_are_all_single_packet(raw):
+    # Documents reality: every server reply in the golden capture fits in one
+    # packet (EOM set, packet_id 1). There is no real multi-packet message to
+    # replay, so the reassembly path below is driven by a real *payload* re-framed
+    # into multiple packets rather than a real multi-packet capture.
+    for frame in (6, 9, 12):
+        header = PacketHeader.unpack(raw(frame))
+        assert header.is_eom
+        assert header.packet_id == 1
+
+
+def test_receive_reassembles_real_payload_split_across_packets(raw, fake_socket):
+    # Take the real 373-byte payload of the LOGIN7 response (frame 9) and re-frame
+    # it into 100-byte packets, then prove receive_message stitches it back exactly.
+    real_payload = raw(9)[HEADER_SIZE:]
+    pieces = [real_payload[i : i + 100] for i in range(0, len(real_payload), 100)]
+    assert len(pieces) > 1  # genuinely multi-packet
+    stream = b"".join(
+        _packet(PacketType.TABULAR_RESULT, piece, eom=(i == len(pieces) - 1))
+        for i, piece in enumerate(pieces)
+    )
+    sock = fake_socket([stream])
+    pkt_type, payload = Transport(sock).receive_message()
+    assert pkt_type is PacketType.TABULAR_RESULT
+    assert payload == real_payload
+
+
+def test_receive_rejects_undersized_length(fake_socket):
+    # A header claiming a total length below the 8-byte minimum must raise, not
+    # silently desync the stream via a negative payload_length.
+    bad_header = b"\x04\x01\x00\x03\x00\x00\x01\x00"  # length field = 3
+    sock = fake_socket([bad_header])
+    with pytest.raises(ValueError):
+        Transport(sock).receive_message()
+
+
 # --- send_message -------------------------------------------------------------
 
 
@@ -90,7 +126,7 @@ def test_send_single_packet(fake_socket):
 def test_send_chunks_large_payload(fake_socket):
     sock = fake_socket()
     payload = bytes(range(20))  # 20 bytes, max payload per packet = 16 - 8 = 8
-    Transport(sock).send_message(PacketType.SQL_BATCH, payload, packet_size=16)
+    Transport(sock, packet_size=16).send_message(PacketType.SQL_BATCH, payload)
 
     packets = _split_packets(bytes(sock.sent))
     assert [len(body) for _, body in packets] == [8, 8, 4]
@@ -125,8 +161,21 @@ def test_send_then_receive_roundtrip(fake_socket):
 
 
 def test_packet_size_setter_rejects_out_of_spec(fake_socket):
-    transport = Transport(fake_socket)
+    transport = Transport(fake_socket())
     with pytest.raises(ValueError):
         transport.packet_size = 256
     with pytest.raises(ValueError):
         transport.packet_size = 40000
+
+
+def test_close_closes_socket(fake_socket):
+    sock = fake_socket()
+    Transport(sock).close()
+    assert sock.closed
+
+
+def test_context_manager_closes_socket(fake_socket):
+    sock = fake_socket()
+    with Transport(sock) as t:
+        assert t._sock is sock
+    assert sock.closed
