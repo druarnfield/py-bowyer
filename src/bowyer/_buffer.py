@@ -51,6 +51,14 @@ class PacketHeader:
         type_, status, length, spid, packet_id, window = struct.unpack(
             cls._FORMAT, data[:HEADER_SIZE]
         )
+        # `length` is the whole packet incl. header; a server-supplied value below
+        # HEADER_SIZE would make payload_length negative and silently desync the
+        # stream (every later packet misaligned with no error). Catch it here, at
+        # the one layer everything downstream trusts.
+        if length < HEADER_SIZE:
+            raise ValueError(
+                f"packet length {length} below minimum {HEADER_SIZE} (header size)"
+            )
         return cls(PacketType(type_), Status(status), length, spid, packet_id, window)
 
     @property
@@ -64,6 +72,19 @@ class PacketHeader:
         return Status.EOM in self.status
 
 
+def _pack(fmt: str, field: str, value: int) -> bytes:
+    """struct.pack with a domain error instead of an opaque struct.error.
+
+    Everything downstream builds payloads through these primitives, so an
+    out-of-range value should name the field that overflowed, not surface a
+    bare "ubyte format requires 0 <= number <= 255" from deep in struct.
+    """
+    try:
+        return struct.pack(fmt, value)
+    except struct.error as exc:
+        raise ValueError(f"{field} value {value!r} out of range: {exc}") from exc
+
+
 class ByteWriter:
     """Builds a little-endian payload buffer."""
 
@@ -71,16 +92,20 @@ class ByteWriter:
         self._buf = bytearray()
 
     def write_uint8(self, value: int) -> None:
-        self._buf += struct.pack("<B", value)
+        self._buf += _pack("<B", "uint8", value)
 
     def write_uint16(self, value: int) -> None:
-        self._buf += struct.pack("<H", value)
+        self._buf += _pack("<H", "uint16", value)
+
+    def write_uint16_be(self, value: int) -> None:
+        # Big-endian exception for PRELOGIN option offsets/lengths (§2.2.6.5).
+        self._buf += _pack(">H", "uint16_be", value)
 
     def write_uint32(self, value: int) -> None:
-        self._buf += struct.pack("<I", value)
+        self._buf += _pack("<I", "uint32", value)
 
     def write_int32(self, value: int) -> None:
-        self._buf += struct.pack("<i", value)
+        self._buf += _pack("<i", "int32", value)
 
     def write_bytes(self, data: bytes) -> None:
         self._buf += data
@@ -118,6 +143,10 @@ class ByteReader:
 
     def read_uint16(self) -> int:
         return struct.unpack_from("<H", self._data, self._take(2))[0]
+
+    def read_uint16_be(self) -> int:
+        # Big-endian exception for PRELOGIN option offsets/lengths (§2.2.6.5).
+        return struct.unpack_from(">H", self._data, self._take(2))[0]
 
     def read_uint32(self) -> int:
         return struct.unpack_from("<I", self._data, self._take(4))[0]

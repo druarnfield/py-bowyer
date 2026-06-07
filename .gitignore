@@ -26,6 +26,10 @@ env/
 .coverage.*
 htmlcov/
 
+# Zig build artifacts
+.zig-cache/
+zig-out/
+
 # Editors / OS
 .idea/
 .vscode/

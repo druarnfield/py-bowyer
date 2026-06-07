@@ -48,6 +48,12 @@ def test_header_unpack_rejects_short_input():
         PacketHeader.unpack(b"\x10\x01\x00")
 
 
+def test_header_unpack_rejects_length_below_header_size():
+    # length field == 3 (< HEADER_SIZE) would make payload_length negative.
+    with pytest.raises(ValueError):
+        PacketHeader.unpack(b"\x04\x01\x00\x03\x00\x00\x01\x00")
+
+
 # --- ByteWriter / ByteReader: little-endian payload primitives -----------------
 
 
@@ -55,6 +61,23 @@ def test_uint16_is_little_endian():
     w = ByteWriter()
     w.write_uint16(0x0102)
     assert w.getvalue() == b"\x02\x01"
+
+
+def test_uint16_be_is_big_endian():
+    # PRELOGIN option offsets/lengths are big-endian (the payload exception).
+    w = ByteWriter()
+    w.write_uint16_be(0x0102)
+    assert w.getvalue() == b"\x01\x02"
+
+
+def test_uint16_be_roundtrips_through_reader():
+    w = ByteWriter()
+    w.write_uint16_be(0xBEEF)
+    assert ByteReader(w.getvalue()).read_uint16_be() == 0xBEEF
+
+
+def test_read_uint16_be_decodes_big_endian():
+    assert ByteReader(b"\x01\x02").read_uint16_be() == 0x0102
 
 
 def test_le_primitive_roundtrip():
@@ -102,3 +125,20 @@ def test_reader_overrun_raises():
     r = ByteReader(b"\x01")
     with pytest.raises(ValueError):
         r.read_uint32()
+
+
+@pytest.mark.parametrize(
+    "method, value",
+    [
+        ("write_uint8", 256),
+        ("write_uint16", 0x10000),
+        ("write_uint32", 0x1_0000_0000),
+        ("write_int32", 0x8000_0000),
+    ],
+)
+def test_writer_out_of_range_raises_named_value_error(method, value):
+    # Out-of-range writes surface a domain ValueError naming the field, not a
+    # bare struct.error from deep in the buffer.
+    w = ByteWriter()
+    with pytest.raises(ValueError):
+        getattr(w, method)(value)
