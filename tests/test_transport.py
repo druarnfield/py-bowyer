@@ -96,8 +96,8 @@ def test_send_chunks_large_payload(fake_socket):
     assert [len(body) for _, body in packets] == [8, 8, 4]
     # EOM only on the final packet.
     assert [h.is_eom for h, _ in packets] == [False, False, True]
-    # PacketID increments from 0.
-    assert [h.packet_id for h, _ in packets] == [0, 1, 2]
+    # PacketID increments from 1.
+    assert [h.packet_id for h, _ in packets] == [1, 2, 3]
     # Bodies reassemble to the original payload.
     assert b"".join(body for _, body in packets) == payload
 
@@ -122,3 +122,11 @@ def test_send_then_receive_roundtrip(fake_socket):
     pkt_type, payload = Transport(reader).receive_message()
     assert pkt_type is PacketType.PRELOGIN
     assert payload == b"the-payload"
+
+
+def test_packet_size_setter_rejects_out_of_spec(fake_socket):
+    transport = Transport(fake_socket)
+    with pytest.raises(ValueError):
+        transport.packet_size = 256
+    with pytest.raises(ValueError):
+        transport.packet_size = 40000

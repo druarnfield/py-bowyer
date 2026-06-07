@@ -23,6 +23,19 @@ class Transport:
         self._sock = sock
         self._packet_size = DEFAULT_PACKET_SIZE
 
+    @property
+    def packet_size(self) -> int:
+        """Negotiated packet size; all outgoing messages honor it."""
+        return self._packet_size
+
+    @packet_size.setter
+    def packet_size(self, value: int) -> None:
+        # §2.2.3.1.3: negotiated size is 512..32767; catch a bad ENVCHANGE
+        # parse here rather than emitting malformed frames later.
+        if not 512 <= value <= 32767:
+            raise ValueError(f"packet size {value} outside spec range 512..32767")
+        self._packet_size = value
+
     @classmethod
     def connect(cls, host: str, port: int = 1433, timeout: float = 10.0) -> "Transport":
         return cls(socket.create_connection((host, port), timeout=timeout))
@@ -35,18 +48,23 @@ class Transport:
         packet_type: PacketType,
         payload: bytes,
         *,
-        packet_size: int = DEFAULT_PACKET_SIZE,
+        packet_size: int | None = None,
     ) -> None:
-        """Split `payload` across packets, setting EOM only on the last one."""
-        max_payload = packet_size - HEADER_SIZE
+        """
+        Split `payload` across packets, setting EOM only on the last one.
+        `packet_size` overrides the connection's negotiated size (tests only).
+        """
+        effective = packet_size if packet_size is not None else self._packet_size
+        max_payload = effective - HEADER_SIZE
         # Chunk into max_payload-sized pieces; an empty payload still sends one
         # (EOM) packet so the peer sees a complete message.
         chunks = [
             payload[i : i + max_payload] for i in range(0, len(payload), max_payload)
         ] or [b""]
-
-        for packet_id, chunk in enumerate(chunks):
-            is_last = packet_id == len(chunks) - 1
+        # spec: start at 0 or 1, impl choice (§2.2.3.1.5 note 7);
+        # we use 1 to match reference captures
+        for packet_id, chunk in enumerate(chunks, start=1):
+            is_last = packet_id == len(chunks)
             header = PacketHeader(
                 type=packet_type,
                 status=Status.EOM if is_last else Status.NORMAL,
