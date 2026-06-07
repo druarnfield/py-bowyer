@@ -63,6 +63,23 @@ def test_uint16_is_little_endian():
     assert w.getvalue() == b"\x02\x01"
 
 
+def test_uint16_be_is_big_endian():
+    # PRELOGIN option offsets/lengths are big-endian (the payload exception).
+    w = ByteWriter()
+    w.write_uint16_be(0x0102)
+    assert w.getvalue() == b"\x01\x02"
+
+
+def test_uint16_be_roundtrips_through_reader():
+    w = ByteWriter()
+    w.write_uint16_be(0xBEEF)
+    assert ByteReader(w.getvalue()).read_uint16_be() == 0xBEEF
+
+
+def test_read_uint16_be_decodes_big_endian():
+    assert ByteReader(b"\x01\x02").read_uint16_be() == 0x0102
+
+
 def test_le_primitive_roundtrip():
     w = ByteWriter()
     w.write_uint8(0xAB)

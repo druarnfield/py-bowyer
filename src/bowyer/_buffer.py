@@ -97,6 +97,10 @@ class ByteWriter:
     def write_uint16(self, value: int) -> None:
         self._buf += _pack("<H", "uint16", value)
 
+    def write_uint16_be(self, value: int) -> None:
+        # Big-endian exception for PRELOGIN option offsets/lengths (§2.2.6.5).
+        self._buf += _pack(">H", "uint16_be", value)
+
     def write_uint32(self, value: int) -> None:
         self._buf += _pack("<I", "uint32", value)
 
@@ -139,6 +143,10 @@ class ByteReader:
 
     def read_uint16(self) -> int:
         return struct.unpack_from("<H", self._data, self._take(2))[0]
+
+    def read_uint16_be(self) -> int:
+        # Big-endian exception for PRELOGIN option offsets/lengths (§2.2.6.5).
+        return struct.unpack_from(">H", self._data, self._take(2))[0]
 
     def read_uint32(self) -> int:
         return struct.unpack_from("<I", self._data, self._take(4))[0]
